@@ -1,0 +1,824 @@
+// 全局变量
+let currentSection = 'dashboard';
+let apiStatus = 'unknown';
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+    loadSettings();
+    updateStats();
+    checkApiStatus();
+});
+
+// 初始化应用
+function initializeApp() {
+    // 设置导航点击事件
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = this.getAttribute('href').substring(1);
+            showSection(target);
+        });
+    });
+
+    // 设置API提供商切换事件
+    const apiProviderSelect = document.getElementById('apiProvider');
+    if (apiProviderSelect) {
+        apiProviderSelect.addEventListener('change', function() {
+            updateApiSettings();
+        });
+    }
+
+    // 设置AI启用复选框事件
+    const enableAICheckbox = document.getElementById('enableAI');
+    if (enableAICheckbox) {
+        enableAICheckbox.addEventListener('change', function() {
+            toggleAIProvider();
+            toggleReportType();
+        });
+    }
+
+    // 初始化AI提供商选择框状态
+    toggleAIProvider();
+    toggleReportType();
+}
+
+// 显示指定区域
+function showSection(sectionId) {
+    // 隐藏所有区域
+    document.querySelectorAll('.section').forEach(section => {
+        section.classList.remove('active');
+    });
+
+    // 更新导航链接状态
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.classList.remove('active');
+    });
+
+    // 显示目标区域
+    document.getElementById(sectionId).classList.add('active');
+    document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
+
+    currentSection = sectionId;
+
+    // 特定区域的初始化
+    if (sectionId === 'reports') {
+        loadReports();
+    } else if (sectionId === 'dashboard') {
+        updateStats();
+    }
+}
+
+// 显示分析区域
+function showAnalysisSection() {
+    showSection('analysis');
+}
+
+// 显示报告区域
+function showReportsSection() {
+    showSection('reports');
+}
+
+// 检查API状态
+async function checkApiStatus() {
+    const statusElement = document.getElementById('apiStatus');
+    statusElement.textContent = '检测中...';
+    statusElement.className = 'status-badge';
+
+    try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            statusElement.textContent = '已连接';
+            statusElement.className = 'status-badge connected';
+            apiStatus = 'connected';
+        } else {
+            statusElement.textContent = '连接失败';
+            statusElement.className = 'status-badge disconnected';
+            apiStatus = 'disconnected';
+        }
+    } catch (error) {
+        statusElement.textContent = '连接错误';
+        statusElement.className = 'status-badge disconnected';
+        apiStatus = 'error';
+    }
+
+    // 更新AI状态
+    document.getElementById('aiStatus').textContent = apiStatus === 'connected' ? '就绪' : '离线';
+}
+
+// 测试API连接
+async function testApiConnection() {
+    const apiProvider = document.getElementById('apiProviderSelect').value;
+    showNotification(`正在测试${apiProvider.toUpperCase()} API连接...`, 'info');
+    
+    try {
+        const response = await fetch(`/api/test?provider=${apiProvider}`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            showNotification(`✅ ${apiProvider.toUpperCase()} API连接测试成功！`, 'success');
+        } else {
+            showNotification(`⚠️ ${apiProvider.toUpperCase()} API连接测试失败：${data.message}`, 'warning');
+        }
+    } catch (error) {
+        showNotification(`❌ ${apiProvider.toUpperCase()} API连接测试错误：${error.message}`, 'error');
+    }
+    
+    checkApiStatus(); // 刷新状态
+}
+
+// 显示/隐藏AI提供商选择框
+function toggleAIProvider() {
+    const enableAIElement = document.getElementById('enableAI');
+    const aiProviderGroup = document.getElementById('aiProviderGroup');
+    
+    if (!enableAIElement || !aiProviderGroup) {
+        return; // 元素不存在时直接返回
+    }
+    
+    const enableAI = enableAIElement.checked;
+    
+    if (enableAI) {
+        aiProviderGroup.style.display = 'block';
+    } else {
+        aiProviderGroup.style.display = 'none';
+    }
+}
+
+// 控制报告类型选择框的显示
+function toggleReportType() {
+    const enableAIElement = document.getElementById('enableAI');
+    const reportTypeGroup = document.getElementById('reportTypeGroup');
+    
+    if (!enableAIElement || !reportTypeGroup) {
+        return; // 元素不存在时直接返回
+    }
+    
+    const enableAI = enableAIElement.checked;
+    
+    if (enableAI) {
+        reportTypeGroup.style.display = 'block';
+    } else {
+        reportTypeGroup.style.display = 'none';
+    }
+}
+
+// 开始日志分析
+async function startAnalysis() {
+    const logDirectoryElement = document.getElementById('logDirectory');
+    const analysisTypeElement = document.getElementById('analysisType');
+    const enableAIElement = document.getElementById('enableAI');
+    const aiProviderElement = document.getElementById('aiProvider');
+    const reportTypeElement = document.getElementById('reportType');
+
+    // 检查必要元素是否存在
+    if (!logDirectoryElement) {
+        showNotification('❌ 页面元素加载错误：日志目录输入框不存在', 'error');
+        return;
+    }
+
+    const logDirectory = logDirectoryElement.value;
+    const analysisType = analysisTypeElement ? analysisTypeElement.value : 'comprehensive';
+    const enableAI = enableAIElement ? enableAIElement.checked : false;
+    const aiProvider = aiProviderElement ? aiProviderElement.value : 'openai';
+    const reportType = reportTypeElement ? reportTypeElement.value : 'basic';
+
+    if (!logDirectory) {
+        showNotification('请输入日志目录路径', 'warning');
+        return;
+    }
+
+    // 显示进度条
+    const progressElement = document.getElementById('analysisProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    // 检查进度条元素是否存在
+    if (progressElement && progressFill && progressText) {
+        progressElement.style.display = 'block';
+        progressFill.style.width = '0%';
+        progressText.textContent = '准备开始分析...';
+    }
+
+    try {
+        // 调用后端API进行实际分析
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                log_directory: logDirectory,
+                enable_ai: enableAI,
+                api_provider: aiProvider,  // 新增API提供商参数
+                report_type: reportType    // 新增报告类型参数
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // 更新进度条
+            if (progressFill && progressText) {
+                progressFill.style.width = '100%';
+                progressText.textContent = '分析完成！';
+            }
+            
+            // 显示分析结果
+            showAnalysisResults(data.report);
+            showNotification('✅ 日志分析完成！', 'success');
+            
+            // 自动切换到报告页面并刷新报告列表
+            setTimeout(() => {
+                showSection('reports');
+                loadReports();
+            }, 1000);
+        } else {
+            throw new Error(data.message);
+        }
+        
+    } catch (error) {
+        showNotification('❌ 分析过程中出现错误：' + error.message, 'error');
+        if (progressElement) {
+            progressElement.style.display = 'none';
+        }
+    }
+}
+
+// 模拟分析过程
+async function simulateAnalysis(progressFill, progressText) {
+    const steps = [
+        { progress: 10, text: '正在扫描日志文件...' },
+        { progress: 30, text: '解析日志格式...' },
+        { progress: 50, text: '检测异常模式...' },
+        { progress: 70, text: '分析性能指标...' },
+        { progress: 90, text: '生成分析报告...' },
+        { progress: 100, text: '分析完成！' }
+    ];
+
+    for (const step of steps) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        progressFill.style.width = step.progress + '%';
+        progressText.textContent = step.text;
+    }
+}
+
+// 显示分析结果
+function showAnalysisResults(report) {
+    const resultsElement = document.getElementById('analysisResults');
+    const resultsContent = document.getElementById('resultsContent');
+    
+    if (report) {
+        // 显示实际的分析报告
+        resultsContent.innerHTML = `
+            <div class="result-item">
+                <h4>📊 分析报告</h4>
+                <pre style="white-space: pre-wrap; background: #f5f5f5; padding: 15px; border-radius: 5px; max-height: 300px; overflow-y: auto;">${report}</pre>
+            </div>
+        `;
+    } else {
+        // 如果没有报告数据，显示默认信息
+        resultsContent.innerHTML = `
+            <div class="result-item">
+                <h4>📊 分析摘要</h4>
+                <p>• 扫描了 25 个日志文件</p>
+                <p>• 检测到 8 个异常事件</p>
+                <p>• 识别了 3 个性能瓶颈</p>
+                <p>• 生成详细分析报告</p>
+            </div>
+            <div class="result-item">
+                <h4>🔍 关键发现</h4>
+                <p>• 机器人定位系统稳定性良好</p>
+                <p>• 导航模块存在响应延迟</p>
+                <p>• 传感器数据采集正常</p>
+            </div>
+        `;
+    }
+    
+    resultsElement.style.display = 'block';
+}
+
+// 生成报告
+function generateReport() {
+    showNotification('正在生成报告...', 'info');
+    
+    // 模拟报告生成
+    setTimeout(() => {
+        showNotification('✅ 报告生成完成！', 'success');
+        showSection('reports');
+        loadReports();
+    }, 2000);
+}
+
+// 加载报告列表
+async function loadReports() {
+    const reportsGrid = document.getElementById('reportsGrid');
+    const noReports = document.getElementById('noReports');
+    
+    try {
+        const response = await fetch('/api/reports');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const reports = await response.json();
+        
+        // 检查是否是错误响应
+        if (reports.status && reports.status === 'error') {
+            throw new Error(reports.message || '获取报告列表失败');
+        }
+        
+        // 确保 reports 是数组
+        const reportList = Array.isArray(reports) ? reports : [];
+        
+        if (reportList.length > 0) {
+            noReports.style.display = 'none';
+            reportsGrid.innerHTML = reportList.map(report => `
+                <div class="report-card">
+                    <h4>${report.title || '未命名报告'}</h4>
+                    <div class="report-meta">
+                        <span>📅 ${report.date || '未知日期'}</span>
+                        <span>📊 ${report.type || '未知类型'}</span>
+                        <span>📏 ${report.size || '0 KB'}</span>
+                    </div>
+                    <p>${report.description || '无描述'}</p>
+                    <div class="report-actions">
+                        <button class="btn-primary" onclick="viewReport('${report.id}')">查看</button>
+                        <button class="btn-secondary" onclick="downloadReport('${report.id}')">下载</button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            noReports.style.display = 'block';
+            noReports.innerHTML = `
+                <i class="fas fa-folder-open"></i>
+                <p>暂无报告文件</p>
+                <small>请先进行日志分析生成报告</small>
+            `;
+        }
+    } catch (error) {
+        console.error('加载报告失败:', error);
+        noReports.style.display = 'block';
+        noReports.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>加载报告时出现错误</p>
+            <small>${error.message}</small>
+        `;
+    }
+}
+
+// 刷新报告列表
+function refreshReports() {
+    showNotification('正在刷新报告列表...', 'info');
+    loadReports();
+    setTimeout(() => {
+        showNotification('✅ 报告列表已刷新', 'success');
+    }, 1000);
+}
+
+// 查看报告
+async function viewReport(reportId) {
+    showNotification(`正在打开报告 ${reportId}...`, 'info');
+    
+    try {
+        // 获取报告详情
+        const response = await fetch(`/api/reports/${reportId}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const reportData = await response.json();
+        
+        if (reportData.status && reportData.status !== 'success') {
+            throw new Error(reportData.message || '获取报告失败');
+        }
+        
+        if (reportData.content) {
+            // 在新窗口打开报告
+            const reportWindow = window.open('', '_blank');
+            
+            if (!reportWindow) {
+                throw new Error('无法打开新窗口，请检查弹窗设置');
+            }
+            
+            if (reportData.file_type === 'html') {
+                // 如果是HTML报告，直接写入内容
+                reportWindow.document.write(reportData.content);
+                reportWindow.document.close();
+            } else {
+                // 如果是文本报告，创建简单的HTML页面显示内容
+                reportWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>${reportData.filename || '日志分析报告'}</title>
+                        <meta charset="utf-8">
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+                            pre { background: #f5f5f5; padding: 15px; border-radius: 5px; white-space: pre-wrap; overflow-x: auto; }
+                            h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>${reportData.filename || '日志分析报告'}</h1>
+                        <pre>${reportData.content}</pre>
+                    </body>
+                    </html>
+                `);
+                reportWindow.document.close();
+            }
+            
+            showNotification('✅ 报告已在新窗口打开', 'success');
+        } else {
+            throw new Error('报告内容为空');
+        }
+    } catch (error) {
+        console.error('查看报告失败:', error);
+        showNotification('❌ 打开报告时出现错误: ' + error.message, 'error');
+    }
+}
+
+// 下载报告
+async function downloadReport(reportId) {
+    showNotification(`正在下载报告 ${reportId}...`, 'info');
+    
+    try {
+        // 下载报告文件
+        const response = await fetch(`/api/reports/${reportId}/download`);
+        
+        if (!response.ok) {
+            if (response.headers.get('Content-Type')?.includes('application/json')) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '下载报告失败');
+            } else {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        }
+        
+        // 获取文件名
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = `report_${reportId}`;
+        
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        // 创建下载链接
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showNotification('✅ 报告下载完成', 'success');
+    } catch (error) {
+        console.error('下载报告失败:', error);
+        showNotification('❌ 下载报告时出现错误: ' + error.message, 'error');
+    }
+}
+
+// 浏览目录
+function browseDirectory() {
+    showNotification('目录浏览功能需要后端支持', 'info');
+    // 在实际应用中，这里会调用文件选择对话框
+}
+
+// 更新API设置显示
+function updateApiSettings() {
+    const apiProvider = document.getElementById('apiProvider');
+    const baseUrlInput = document.getElementById('baseUrl');
+    
+    if (!apiProvider || !baseUrlInput) {
+        console.warn('API设置元素未找到');
+        return;
+    }
+    
+    const provider = apiProvider.value;
+    
+    if (provider === 'deepseek') {
+        baseUrlInput.value = 'https://api.deepseek.com';
+        baseUrlInput.placeholder = 'DeepSeek API基础URL';
+    } else {
+        baseUrlInput.value = 'https://api5.xhub.chat/v1';
+        baseUrlInput.placeholder = 'OpenAI API基础URL';
+    }
+}
+
+// 保存设置
+function saveSettings() {
+    const apiProvider = document.getElementById('apiProvider').value;
+    const apiKey = document.getElementById('apiKey').value;
+    const baseUrl = document.getElementById('baseUrl').value;
+    const logPath = document.getElementById('logPath').value;
+    const reportPath = document.getElementById('reportPath').value;
+    
+    const settings = {
+        api_provider: apiProvider,
+        api_key: apiKey,
+        base_url: baseUrl,
+        log_path: logPath,
+        report_path: reportPath,
+        api_type: apiProvider
+    };
+    
+    // 先保存到本地存储
+    const localSettings = {
+        apiProvider: apiProvider,
+        apiKey: apiKey,
+        baseUrl: baseUrl,
+        logPath: logPath,
+        reportPath: reportPath
+    };
+    
+    localStorage.setItem('robotAnalyzerSettings', JSON.stringify(localSettings));
+    updateApiSettings();
+    
+    // 保存设置到后端
+    fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showNotification('✅ 设置已保存并同步到后端', 'success');
+            updateApiKeyStatus();
+        } else {
+            showNotification('❌ 保存设置失败: ' + data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('保存设置失败:', error);
+        showNotification('❌ 保存设置失败', 'error');
+    });
+}
+
+// 测试设置
+async function testSettings() {
+    const apiProvider = document.getElementById('apiProvider');
+    const apiKey = document.getElementById('apiKey');
+    const baseUrl = document.getElementById('baseUrl');
+    
+    if (!apiProvider || !apiKey || !baseUrl) {
+        showNotification('⚠️ 设置元素未找到', 'warning');
+        return;
+    }
+    
+    // 获取输入值
+    const provider = apiProvider.value || 'openai';
+    const keyValue = apiKey.value.trim();
+    const urlValue = baseUrl.value.trim();
+    
+    // 验证输入
+    if (!keyValue) {
+        showNotification('⚠️ 请输入API密钥', 'warning');
+        apiKey.focus();
+        return;
+    }
+    
+    if (!urlValue) {
+        showNotification('⚠️ 请输入API基础URL', 'warning');
+        baseUrl.focus();
+        return;
+    }
+    
+    if (!urlValue.startsWith('http://') && !urlValue.startsWith('https://')) {
+        showNotification('⚠️ 请输入有效的API基础URL', 'warning');
+        baseUrl.focus();
+        return;
+    }
+    
+    showNotification('正在测试API连接...', 'info');
+    
+    try {
+        const testData = {
+            api_provider: provider,
+            api_key: keyValue,
+            base_url: urlValue,
+            model: provider === 'deepseek' ? 'deepseek-chat' : 'gpt-3.5-turbo'
+        };
+        
+        // 调用后端测试API
+        const response = await fetch('/api/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            showNotification('✅ ' + result.message + ' - 即将保存设置', 'success');
+            
+            // 延迟保存设置，以便用户看到成功消息
+            setTimeout(() => {
+                const settings = {
+                    apiProvider: provider,
+                    apiKey: keyValue,
+                    baseUrl: urlValue,
+                    logPath: document.getElementById('logPath')?.value || './logs',
+                    reportPath: document.getElementById('reportPath')?.value || './reports'
+                };
+                
+                localStorage.setItem('robotAnalyzerSettings', JSON.stringify(settings));
+                localStorage.removeItem('tempApiSettings');
+                
+                showNotification('✅ API配置测试通过且已保存', 'success');
+            }, 1000);
+            
+        } else {
+            showNotification('❌ ' + result.message, 'error');
+        }
+    } catch (error) {
+        console.error('API测试失败:', error);
+        showNotification('❌ API连接失败: ' + error.message, 'error');
+    }
+}
+
+// 加载设置
+async function loadSettings() {
+    // 首先尝试从后端加载设置
+    try {
+        const response = await fetch('/api/settings');
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.settings) {
+            const serverSettings = result.settings.settings || {};
+            
+            // 更新表单
+            const apiProvider = document.getElementById('apiProvider');
+            const apiKey = document.getElementById('apiKey');
+            const baseUrl = document.getElementById('baseUrl');
+            const logPath = document.getElementById('logPath');
+            const reportPath = document.getElementById('reportPath');
+            
+            if (apiProvider) apiProvider.value = serverSettings.api_provider || 'openai';
+            if (apiKey) apiKey.value = serverSettings.api_key || '';
+            if (baseUrl) baseUrl.value = serverSettings.base_url || '';
+            if (logPath) logPath.value = serverSettings.log_path || './logs';
+            if (reportPath) reportPath.value = serverSettings.report_path || './reports';
+            
+            updateApiKeyStatus();
+            return;
+        }
+    } catch (error) {
+        console.error('从后端加载设置失败:', error);
+    }
+    
+    // 如果后端没有设置，回退到本地存储
+    const savedSettings = localStorage.getItem('robotAnalyzerSettings');
+    
+    if (!savedSettings) {
+        return;
+    }
+    
+    try {
+        const settings = JSON.parse(savedSettings);
+        
+        const apiProvider = document.getElementById('apiProvider');
+        const apiKey = document.getElementById('apiKey');
+        const baseUrl = document.getElementById('baseUrl');
+        const logPath = document.getElementById('logPath');
+        const reportPath = document.getElementById('reportPath');
+        
+        if (apiProvider) apiProvider.value = settings.apiProvider || 'openai';
+        if (apiKey) apiKey.value = settings.apiKey || '';
+        if (baseUrl) baseUrl.value = settings.baseUrl || '';
+        if (logPath) logPath.value = settings.logPath || './logs';
+        if (reportPath) reportPath.value = settings.reportPath || './reports';
+        
+        updateApiKeyStatus();
+    } catch (error) {
+        console.error('加载设置失败:', error);
+    }
+}
+
+// 更新API密钥状态显示
+async function updateApiKeyStatus() {
+    const apiKeyInput = document.getElementById('apiKey');
+    const apiStatus = document.getElementById('aiStatus');
+    
+    if (!apiKeyInput) return;
+    
+    const apiKey = apiKeyInput.value;
+    
+    if (apiKey) {
+        // 显示API密钥的状态（部分隐藏）
+        const maskedKey = apiKey.substring(0, 8) + '*'.repeat(Math.min(20, apiKey.length - 8));
+        if (apiStatus) {
+            apiStatus.textContent = '已配置';
+            apiStatus.className = 'stat-value success';
+        }
+    } else {
+        if (apiStatus) {
+            apiStatus.textContent = '未配置';
+            apiStatus.className = 'stat-value error';
+        }
+    }
+}
+
+// 更新统计信息
+async function updateStats() {
+    try {
+        // 获取日志文件列表
+        const logsResponse = await fetch('/api/logs');
+        const logFiles = await logsResponse.json();
+        
+        // 获取报告文件列表
+        const reportsResponse = await fetch('/api/reports');
+        const reports = await reportsResponse.json();
+        
+        // 更新统计数据
+        const logCount = document.getElementById('logCount');
+        const anomalyCount = document.getElementById('anomalyCount');
+        const reportCount = document.getElementById('reportCount');
+        
+        if (logCount) logCount.textContent = logFiles.length || 0;
+        if (anomalyCount) anomalyCount.textContent = '8'; // 暂时保持模拟数据
+        if (reportCount) reportCount.textContent = reports.length || 0;
+    } catch (error) {
+        console.error('更新统计信息失败:', error);
+        // 如果API调用失败，使用默认值
+        const logCount = document.getElementById('logCount');
+        const anomalyCount = document.getElementById('anomalyCount');
+        const reportCount = document.getElementById('reportCount');
+        
+        if (logCount) logCount.textContent = '0';
+        if (anomalyCount) anomalyCount.textContent = '0';
+        if (reportCount) reportCount.textContent = '0';
+    }
+}
+
+// 显示通知
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    const messageElement = document.getElementById('notificationMessage');
+    
+    if (!notification || !messageElement) {
+        console.warn('通知元素未找到:', message);
+        return;
+    }
+    
+    messageElement.textContent = message;
+    notification.className = `notification ${type}`;
+    notification.style.display = 'block';
+    
+    // 5秒后自动隐藏
+    setTimeout(hideNotification, 5000);
+}
+
+// 隐藏通知
+function hideNotification() {
+    const notification = document.getElementById('notification');
+    
+    if (!notification) {
+        return;
+    }
+    
+    notification.style.display = 'none';
+}
+
+// 键盘快捷键
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey || e.metaKey) {
+        switch(e.key) {
+            case '1':
+                e.preventDefault();
+                showSection('dashboard');
+                break;
+            case '2':
+                e.preventDefault();
+                showSection('analysis');
+                break;
+            case '3':
+                e.preventDefault();
+                showSection('reports');
+                break;
+            case '4':
+                e.preventDefault();
+                showSection('settings');
+                break;
+        }
+    }
+});

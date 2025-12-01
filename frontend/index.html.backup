@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 机器人日志分析系统</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-robot"></i>
+                <span>机器人日志分析系统</span>
+            </div>
+            <div class="nav-links">
+                <a href="#dashboard" class="nav-link active">仪表板</a>
+                <a href="#analysis" class="nav-link">日志分析</a>
+                <a href="#reports" class="nav-link">报告查看</a>
+                <a href="#settings" class="nav-link">设置</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 仪表板区域 -->
+        <section id="dashboard" class="section active">
+            <div class="dashboard-header">
+                <h1><i class="fas fa-chart-line"></i> 系统概览</h1>
+                <div class="api-status">
+                    <span class="status-label">API状态:</span>
+                    <span id="apiStatus" class="status-badge">检测中...</span>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>日志文件</h3>
+                        <span id="logCount" class="stat-value">0</span>
+                        <span class="stat-label">个文件</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>异常检测</h3>
+                        <span id="anomalyCount" class="stat-value">0</span>
+                        <span class="stat-label">个异常</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>分析报告</h3>
+                        <span id="reportCount" class="stat-value">0</span>
+                        <span class="stat-label">个报告</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>AI分析</h3>
+                        <span id="aiStatus" class="stat-value">就绪</span>
+                        <span class="stat-label">状态</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <h2><i class="fas fa-bolt"></i> 快速操作</h2>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="showAnalysisSection()">
+                        <i class="fas fa-search"></i>
+                        <span>开始分析</span>
+                    </button>
+                    <button class="action-btn" onclick="showReportsSection()">
+                        <i class="fas fa-file-medical"></i>
+                        <span>查看报告</span>
+                    </button>
+                    <div class="api-test-group">
+                        <select id="apiProviderSelect" class="api-provider-select">
+                            <option value="openai">OpenAI</option>
+                            <option value="deepseek">DeepSeek</option>
+                        </select>
+                        <button class="action-btn" onclick="testApiConnection()">
+                            <i class="fas fa-plug"></i>
+                            <span>测试连接</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 日志分析区域 -->
+        <section id="analysis" class="section">
+            <div class="analysis-header">
+                <h1><i class="fas fa-search"></i> 日志分析</h1>
+                <button class="btn-primary" onclick="startAnalysis()">
+                    <i class="fas fa-play"></i> 开始分析
+                </button>
+            </div>
+
+            <div class="analysis-controls">
+                <div class="control-group">
+                    <label for="logDirectory">日志目录:</label>
+                    <input type="text" id="logDirectory" value="./logs" placeholder="输入日志目录路径">
+                    <button class="btn-secondary" onclick="browseDirectory()">
+                        <i class="fas fa-folder-open"></i> 浏览
+                    </button>
+                </div>
+
+                <div class="control-group">
+                    <label for="analysisType">分析类型:</label>
+                    <select id="analysisType">
+                        <option value="comprehensive">全面分析</option>
+                        <option value="anomaly">异常检测</option>
+                        <option value="performance">性能分析</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="enableAI" checked>
+                        启用AI智能分析
+                    </label>
+                </div>
+
+                <div class="control-group" id="aiProviderGroup" style="display: none;">
+                    <label for="aiProvider">AI提供商:</label>
+                    <select id="aiProvider">
+                        <option value="openai">OpenAI</option>
+                        <option value="deepseek">DeepSeek</option>
+                    </select>
+                </div>
+
+                <div class="control-group" id="reportTypeGroup" style="display: none;">
+                    <label for="reportType">报告类型:</label>
+                    <select id="reportType">
+                        <option value="basic">基本报告</option>
+                        <option value="enhanced">增强版详细报告</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="analysis-progress" id="analysisProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">准备开始分析...</div>
+            </div>
+
+            <div class="analysis-results" id="analysisResults" style="display: none;">
+                <h3><i class="fas fa-check-circle"></i> 分析完成</h3>
+                <div id="resultsContent"></div>
+                <button class="btn-primary" onclick="generateReport()">
+                    <i class="fas fa-file-download"></i> 生成报告
+                </button>
+            </div>
+        </section>
+
+        <!-- 报告查看区域 -->
+        <section id="reports" class="section">
+            <div class="reports-header">
+                <h1><i class="fas fa-file-medical"></i> 报告查看</h1>
+                <button class="btn-secondary" onclick="refreshReports()">
+                    <i class="fas fa-sync"></i> 刷新
+                </button>
+            </div>
+
+            <div class="reports-grid" id="reportsGrid">
+                <!-- 报告列表将动态加载 -->
+                <div class="no-reports" id="noReports">
+                    <i class="fas fa-file-alt"></i>
+                    <p>暂无报告，请先进行日志分析</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 设置区域 -->
+        <section id="settings" class="section">
+            <div class="settings-header">
+                <h1><i class="fas fa-cog"></i> 系统设置</h1>
+            </div>
+
+            <div class="settings-form">
+                <div class="setting-group">
+                    <h3><i class="fas fa-key"></i> API配置</h3>
+                    <div class="form-row">
+                        <label for="apiProvider">API提供商:</label>
+                        <select id="apiProvider">
+                            <option value="openai">OpenAI</option>
+                            <option value="deepseek">DeepSeek</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label for="apiKey">API密钥:</label>
+                        <input type="password" id="apiKey" placeholder="输入API密钥">
+                    </div>
+                    <div class="form-row">
+                        <label for="baseUrl">基础URL:</label>
+                        <input type="text" id="baseUrl" placeholder="API基础URL">
+                    </div>
+                </div>
+
+                <div class="setting-group">
+                    <h3><i class="fas fa-folder"></i> 路径配置</h3>
+                    <div class="form-row">
+                        <label for="logPath">日志目录:</label>
+                        <input type="text" id="logPath" value="./logs">
+                    </div>
+                    <div class="form-row">
+                        <label for="reportPath">报告目录:</label>
+                        <input type="text" id="reportPath" value="./reports">
+                    </div>
+                </div>
+
+                <div class="setting-actions">
+                    <button class="btn-primary" onclick="saveSettings()">
+                        <i class="fas fa-save"></i> 保存设置
+                    </button>
+                    <button class="btn-secondary" onclick="testSettings()">
+                        <i class="fas fa-test"></i> 测试配置
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 通知弹窗 -->
+    <div id="notification" class="notification">
+        <div class="notification-content">
+            <span id="notificationMessage"></span>
+            <button onclick="hideNotification()">×</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

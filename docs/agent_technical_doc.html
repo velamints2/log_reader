@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能日志诊断Agent - 技术文档</title>
+    <style>
+        :root {
+            --primary-color: #00d9ff;
+            --secondary-color: #00ff88;
+            --accent-color: #ff6b6b;
+            --bg-dark: #1a1a2e;
+            --bg-darker: #16213e;
+            --bg-card: #0f3460;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+            color: var(--text-primary);
+            line-height: 1.8;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* 头部样式 */
+        .header {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 3rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .header .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        .header .version {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent-color), #ff8e53);
+            color: white;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 1rem;
+        }
+        
+        /* 目录 */
+        .toc {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 3rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .toc h2 {
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 0.5rem;
+        }
+        
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem;
+            display: block;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        
+        .toc a:hover {
+            color: var(--primary-color);
+            background: rgba(0, 217, 255, 0.1);
+        }
+        
+        .toc a::before {
+            content: '→ ';
+            color: var(--secondary-color);
+        }
+        
+        /* 章节样式 */
+        .section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--primary-color), var(--secondary-color));
+        }
+        
+        .section h2 {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .section h3 {
+            color: var(--secondary-color);
+            font-size: 1.2rem;
+            margin: 1.5rem 0 1rem;
+        }
+        
+        .section h4 {
+            color: var(--text-primary);
+            font-size: 1rem;
+            margin: 1rem 0 0.5rem;
+        }
+        
+        .section p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+        
+        .section ul, .section ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+        
+        .section li {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* 代码块 */
+        pre {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border-color);
+        }
+        
+        code {
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+        }
+        
+        pre code {
+            color: var(--text-primary);
+        }
+        
+        .code-comment {
+            color: #6a9955;
+        }
+        
+        .code-keyword {
+            color: #569cd6;
+        }
+        
+        .code-string {
+            color: #ce9178;
+        }
+        
+        .code-function {
+            color: #dcdcaa;
+        }
+        
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+            background: rgba(0, 217, 255, 0.1);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        td {
+            color: var(--text-secondary);
+        }
+        
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* 流程图 */
+        .flowchart {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1rem;
+            margin: 2rem 0;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+        
+        .flow-step {
+            background: linear-gradient(145deg, var(--bg-darker), var(--bg-dark));
+            border: 2px solid var(--primary-color);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            min-width: 150px;
+            position: relative;
+        }
+        
+        .flow-step .step-num {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-color);
+            color: var(--bg-dark);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .flow-step .step-title {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .flow-step .step-desc {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        
+        .flow-arrow {
+            display: flex;
+            align-items: center;
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+        }
+        
+        /* 特性卡片 */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        
+        .feature-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-3px);
+        }
+        
+        .feature-card .icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card h4 {
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        
+        /* API 端点 */
+        .api-endpoint {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .api-method {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+        
+        .api-method.get {
+            background: #61affe;
+            color: white;
+        }
+        
+        .api-method.post {
+            background: #49cc90;
+            color: white;
+        }
+        
+        .api-path {
+            font-family: monospace;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        
+        .api-desc {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        /* 知识库表格 */
+        .knowledge-table {
+            font-size: 0.9rem;
+        }
+        
+        .knowledge-table .category {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--primary-color);
+        }
+        
+        .knowledge-table .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        
+        .knowledge-table .keyword {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--secondary-color);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+        
+        /* 注意事项 */
+        .note {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+        }
+        
+        .note::before {
+            content: '⚠️ 注意';
+            display: block;
+            color: var(--accent-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tip {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+        }
+        
+        .tip::before {
+            content: '💡 提示';
+            display: block;
+            color: var(--secondary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* 架构图 */
+        .architecture {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+        }
+        
+        .arch-layer {
+            background: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .arch-layer-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .arch-components {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .arch-component {
+            background: var(--bg-card);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        
+        /* 页脚 */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 3rem;
+            color: var(--text-secondary);
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .section {
+                padding: 1.5rem;
+            }
+            
+            .flowchart {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+            
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>🤖 智能日志诊断Agent</h1>
+            <p class="subtitle">基于大模型的机器人日志智能分析系统技术文档</p>
+            <span class="version">v2.0.0 - 2025年11月</span>
+        </header>
+        
+        <!-- 目录 -->
+        <nav class="toc">
+            <h2>📑 目录</h2>
+            <ul>
+                <li><a href="#overview">系统概述</a></li>
+                <li><a href="#architecture">系统架构</a></li>
+                <li><a href="#workflow">工作流程</a></li>
+                <li><a href="#knowledge-base">日志知识库</a></li>
+                <li><a href="#api-reference">API参考</a></li>
+                <li><a href="#frontend">前端界面</a></li>
+                <li><a href="#configuration">配置说明</a></li>
+                <li><a href="#usage">使用指南</a></li>
+            </ul>
+        </nav>
+        
+        <!-- 系统概述 -->
+        <section id="overview" class="section">
+            <h2>1. 系统概述</h2>
+            <p>智能日志诊断Agent是一个基于大语言模型（LLM）的机器人日志分析系统。它能够理解FAE（现场应用工程师）描述的问题，自动选择最相关的日志文件进行分析，并给出专业的诊断建议。</p>
+            
+            <h3>核心特性</h3>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="icon">🧠</div>
+                    <h4>智能理解</h4>
+                    <p>理解自然语言描述的问题，自动识别问题类型和关键信息</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">📚</div>
+                    <h4>知识驱动</h4>
+                    <p>内置30+种日志类型的知识库，精准匹配相关日志</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🔍</div>
+                    <h4>多步推理</h4>
+                    <p>采用ReAct模式，展示完整的推理过程</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🎯</div>
+                    <h4>精准诊断</h4>
+                    <p>跨日志关联分析，找出问题根因</p>
+                </div>
+            </div>
+            
+            <h3>技术栈</h3>
+            <ul>
+                <li><strong>后端:</strong> Python 3.7+ / Flask 2.3+</li>
+                <li><strong>AI模型:</strong> DeepSeek / OpenAI兼容API</li>
+                <li><strong>前端:</strong> HTML5 / CSS3 / JavaScript (ES6+)</li>
+                <li><strong>部署:</strong> Docker / Gunicorn (可选)</li>
+            </ul>
+        </section>
+        
+        <!-- 系统架构 -->
+        <section id="architecture" class="section">
+            <h2>2. 系统架构</h2>
+            
+            <div class="architecture">
+                <div class="arch-layer">
+                    <div class="arch-layer-title">🖥️ 表现层 (Frontend)</div>
+                    <div class="arch-components">
+                        <span class="arch-component">index.html</span>
+                        <span class="arch-component">styles.css</span>
+                        <span class="arch-component">script.js</span>
+                        <span class="arch-component">Agent诊断面板</span>
+                        <span class="arch-component">知识库弹窗</span>
+                    </div>
+                </div>
+                
+                <div class="arch-layer">
+                    <div class="arch-layer-title">⚙️ 服务层 (Backend API)</div>
+                    <div class="arch-components">
+                        <span class="arch-component">Flask Server</span>
+                        <span class="arch-component">/api/agent/diagnose</span>
+                        <span class="arch-component">/api/agent/logs-info</span>
+                        <span class="arch-component">/api/agent/available-logs</span>
+                    </div>
+                </div>
+                
+                <div class="arch-layer">
+                    <div class="arch-layer-title">🤖 Agent核心 (log_agent.py)</div>
+                    <div class="arch-components">
+                        <span class="arch-component">LogDiagnosticAgent</span>
+                        <span class="arch-component">LOG_KNOWLEDGE_BASE</span>
+                        <span class="arch-component">LLM调用模块</span>
+                        <span class="arch-component">日志读取模块</span>
+                    </div>
+                </div>
+                
+                <div class="arch-layer">
+                    <div class="arch-layer-title">🗄️ 数据层</div>
+                    <div class="arch-components">
+                        <span class="arch-component">日志文件 (./logs/)</span>
+                        <span class="arch-component">配置文件 (config.py)</span>
+                        <span class="arch-component">报告存储 (./reports/)</span>
+                    </div>
+                </div>
+                
+                <div class="arch-layer">
+                    <div class="arch-layer-title">☁️ 外部服务</div>
+                    <div class="arch-components">
+                        <span class="arch-component">DeepSeek API</span>
+                        <span class="arch-component">OpenAI API (备选)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <h3>核心文件说明</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>文件</th>
+                        <th>说明</th>
+                        <th>代码行数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>log_agent.py</code></td>
+                        <td>Agent核心逻辑，包含知识库和诊断流程</td>
+                        <td>~750行</td>
+                    </tr>
+                    <tr>
+                        <td><code>backend/server.py</code></td>
+                        <td>Flask后端，提供REST API</td>
+                        <td>~650行</td>
+                    </tr>
+                    <tr>
+                        <td><code>frontend/script.js</code></td>
+                        <td>前端交互逻辑</td>
+                        <td>~1000行</td>
+                    </tr>
+                    <tr>
+                        <td><code>config.py</code></td>
+                        <td>全局配置（API密钥、目录等）</td>
+                        <td>~50行</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+        
+        <!-- 工作流程 -->
+        <section id="workflow" class="section">
+            <h2>3. 工作流程</h2>
+            
+            <div class="flowchart">
+                <div class="flow-step">
+                    <span class="step-num">1</span>
+                    <div class="step-title">接收问题</div>
+                    <div class="step-desc">FAE输入问题描述</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <span class="step-num">2</span>
+                    <div class="step-title">问题分析</div>
+                    <div class="step-desc">提取关键词和意图</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <span class="step-num">3</span>
+                    <div class="step-title">日志选择</div>
+                    <div class="step-desc">匹配知识库选日志</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <span class="step-num">4</span>
+                    <div class="step-title">内容提取</div>
+                    <div class="step-desc">读取相关日志内容</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <span class="step-num">5</span>
+                    <div class="step-title">AI分析</div>
+                    <div class="step-desc">大模型深度分析</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <span class="step-num">6</span>
+                    <div class="step-title">输出报告</div>
+                    <div class="step-desc">生成诊断建议</div>
+                </div>
+            </div>
+            
+            <h3>详细步骤说明</h3>
+            
+            <h4>Step 1: 问题接收与解析</h4>
+            <pre><code><span class="code-comment"># Agent接收FAE的问题描述</span>
+{
+    <span class="code-string">"description"</span>: <span class="code-string">"机器人导航时突然停止，无法继续移动"</span>,
+    <span class="code-string">"issue_time"</span>: <span class="code-string">"2025-11-30 14:30:00"</span>,  <span class="code-comment">// 可选</span>
+    <span class="code-string">"window"</span>: 15  <span class="code-comment">// 时间窗口（分钟）</span>
+}</code></pre>
+            
+            <h4>Step 2: 智能日志选择</h4>
+            <p>Agent根据问题描述中的关键词，匹配日志知识库：</p>
+            <pre><code><span class="code-comment"># 问题: "导航时突然停止"</span>
+<span class="code-comment"># 关键词提取: 导航、停止、移动</span>
+<span class="code-comment"># 匹配日志:</span>
+- navigation_move_base.log  <span class="code-comment"># 导航核心日志</span>
+- ikitbot_driver.log        <span class="code-comment"># 底盘驱动日志</span>
+- odometry_node.log         <span class="code-comment"># 里程计日志</span>
+- costmap_node.log          <span class="code-comment"># 代价地图日志</span></code></pre>
+            
+            <h4>Step 3: 日志内容提取</h4>
+            <p>根据时间窗口过滤，提取关键日志片段：</p>
+            <pre><code><span class="code-keyword">def</span> <span class="code-function">_read_log_content</span>(log_file, max_lines=500, time_filter=None):
+    <span class="code-comment"># 读取日志文件</span>
+    <span class="code-comment"># 按时间窗口过滤</span>
+    <span class="code-comment"># 提取ERROR/WARN级别日志</span>
+    <span class="code-comment"># 返回格式化内容</span></code></pre>
+            
+            <h4>Step 4: AI深度分析</h4>
+            <p>将日志内容发送给大模型进行分析：</p>
+            <pre><code><span class="code-comment"># 构建Prompt</span>
+prompt = f<span class="code-string">"""
+你是机器人日志分析专家。
+问题描述: {problem}
+相关日志: {log_content}
+
+请分析:
+1. 问题根因
+2. 关键日志行
+3. 解决建议
+"""</span></code></pre>
+        </section>
+        
+        <!-- 日志知识库 -->
+        <section id="knowledge-base" class="section">
+            <h2>4. 日志知识库</h2>
+            <p>系统内置了完整的机器人日志知识库，涵盖30+种日志类型：</p>
+            
+            <table class="knowledge-table">
+                <thead>
+                    <tr>
+                        <th>日志文件</th>
+                        <th>类别</th>
+                        <th>描述</th>
+                        <th>关键词</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>ikitbot_driver.log</code></td>
+                        <td><span class="category">底盘</span></td>
+                        <td>底盘驱动核心日志，记录IMU、超声波、电机状态</td>
+                        <td>
+                            <div class="keywords">
+                                <span class="keyword">imu</span>
+                                <span class="keyword">ultrasonic</span>
+                                <span class="keyword">motor</span>
+                                <span class="keyword">battery</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>navigation_move_base.log</code></td>
+                        <td><span class="category">导航</span></td>
+                        <td>导航核心日志，记录路径规划和移动控制</td>
+                        <td>
+                            <div class="keywords">
+                                <span class="keyword">move_base</span>
+                                <span class="keyword">planner</span>
+                                <span class="keyword">costmap</span>
+                                <span class="keyword">goal</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>cartographer_node.*</code></td>
+                        <td><span class="category">SLAM</span></td>
+                        <td>SLAM建图日志，记录定位和地图构建</td>
+                        <td>
+                            <div class="keywords">
+                                <span class="keyword">slam</span>
+                                <span class="keyword">map</span>
+                                <span class="keyword">localization</span>
+                                <span class="keyword">pose</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>auto_docking.log</code></td>
+                        <td><span class="category">任务</span></td>
+                        <td>自动回充日志，记录对接充电桩过程</td>
+                        <td>
+                            <div class="keywords">
+                                <span class="keyword">docking</span>
+                                <span class="keyword">charge</span>
+                                <span class="keyword">dock</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>00_00_04_mqtt.txt</code></td>
+                        <td><span class="category">通信</span></td>
+                        <td>MQTT通信日志，记录云端通信状态</td>
+                        <td>
+                            <div class="keywords">
+                                <span class="keyword">mqtt</span>
+                                <span class="keyword">cloud</span>
+                                <span class="keyword">message</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><code>ascamera_rgbd_*.log</code></td>
+                        <td><span class="category">传感器</span></td>
+                        <td>RGBD相机日志，记录深度相机状态</td>
+                        <td>
+                            <div class="keywords">
+                                <span class="keyword">camera</span>
+                                <span class="keyword">rgbd</span>
+                                <span class="keyword">depth</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="tip">
+                <p>知识库支持模糊匹配，例如输入"充电失败"会自动匹配到<code>auto_docking.log</code>和<code>00_00_04_can.txt</code>（电池状态）。</p>
+            </div>
+            
+            <h3>知识库数据结构</h3>
+            <pre><code>LOG_KNOWLEDGE_BASE = {
+    <span class="code-string">"ikitbot_driver.log"</span>: {
+        <span class="code-string">"category"</span>: <span class="code-string">"底盘"</span>,
+        <span class="code-string">"description"</span>: <span class="code-string">"底盘驱动核心日志..."</span>,
+        <span class="code-string">"importance"</span>: <span class="code-string">"critical"</span>,
+        <span class="code-string">"keywords"</span>: [<span class="code-string">"imu"</span>, <span class="code-string">"ultrasonic"</span>, <span class="code-string">"motor"</span>, ...],
+        <span class="code-string">"problems"</span>: [<span class="code-string">"电机故障"</span>, <span class="code-string">"IMU异常"</span>, ...]
+    },
+    <span class="code-comment">// ... 更多日志类型</span>
+}</code></pre>
+        </section>
+        
+        <!-- API参考 -->
+        <section id="api-reference" class="section">
+            <h2>5. API参考</h2>
+            
+            <h3>Agent诊断接口</h3>
+            <div class="api-endpoint">
+                <span class="api-method post">POST</span>
+                <span class="api-path">/api/agent/diagnose</span>
+                <p class="api-desc">智能诊断接口，根据问题描述自动选择相关日志并进行AI分析</p>
+            </div>
+            
+            <h4>请求参数</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>参数</th>
+                        <th>类型</th>
+                        <th>必填</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>description</code></td>
+                        <td>string</td>
+                        <td>是</td>
+                        <td>问题描述</td>
+                    </tr>
+                    <tr>
+                        <td><code>issue_time</code></td>
+                        <td>string</td>
+                        <td>否</td>
+                        <td>问题时间 (YYYY-MM-DD HH:MM:SS)</td>
+                    </tr>
+                    <tr>
+                        <td><code>window</code></td>
+                        <td>int</td>
+                        <td>否</td>
+                        <td>时间窗口（分钟），默认15</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h4>请求示例</h4>
+            <pre><code>curl -X POST http://localhost:8080/api/agent/diagnose \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "机器人导航时突然停止",
+    "issue_time": "2025-11-30 14:30:00",
+    "window": 10
+  }'</code></pre>
+            
+            <h4>响应示例</h4>
+            <pre><code>{
+    <span class="code-string">"status"</span>: <span class="code-string">"success"</span>,
+    <span class="code-string">"reasoning"</span>: [
+        <span class="code-string">"分析问题：机器人导航时突然停止"</span>,
+        <span class="code-string">"识别关键词：导航、停止、移动"</span>,
+        <span class="code-string">"选择相关日志：navigation_move_base.log, ikitbot_driver.log..."</span>
+    ],
+    <span class="code-string">"selected_logs"</span>: [
+        {<span class="code-string">"file"</span>: <span class="code-string">"navigation_move_base.log"</span>, <span class="code-string">"reason"</span>: <span class="code-string">"导航核心日志"</span>},
+        {<span class="code-string">"file"</span>: <span class="code-string">"ikitbot_driver.log"</span>, <span class="code-string">"reason"</span>: <span class="code-string">"底盘驱动状态"</span>}
+    ],
+    <span class="code-string">"ai_analysis"</span>: {
+        <span class="code-string">"raw"</span>: <span class="code-string">"根据日志分析，问题根因是..."</span>
+    }
+}</code></pre>
+            
+            <hr style="margin: 2rem 0; border-color: var(--border-color);">
+            
+            <h3>日志知识库接口</h3>
+            <div class="api-endpoint">
+                <span class="api-method get">GET</span>
+                <span class="api-path">/api/agent/logs-info</span>
+                <p class="api-desc">获取Agent的日志知识库信息</p>
+            </div>
+            
+            <h4>响应示例</h4>
+            <pre><code>{
+    <span class="code-string">"status"</span>: <span class="code-string">"success"</span>,
+    <span class="code-string">"log_types_count"</span>: 32,
+    <span class="code-string">"knowledge_base"</span>: {
+        <span class="code-string">"ikitbot_driver.log"</span>: {
+            <span class="code-string">"category"</span>: <span class="code-string">"底盘"</span>,
+            <span class="code-string">"description"</span>: <span class="code-string">"底盘驱动核心日志..."</span>,
+            <span class="code-string">"keywords"</span>: [<span class="code-string">"imu"</span>, <span class="code-string">"motor"</span>, ...]
+        }
+    }
+}</code></pre>
+            
+            <hr style="margin: 2rem 0; border-color: var(--border-color);">
+            
+            <h3>可用日志列表接口</h3>
+            <div class="api-endpoint">
+                <span class="api-method get">GET</span>
+                <span class="api-path">/api/agent/available-logs</span>
+                <p class="api-desc">获取当前日志目录中实际存在的日志文件列表</p>
+            </div>
+            
+            <h4>响应示例</h4>
+            <pre><code>{
+    <span class="code-string">"status"</span>: <span class="code-string">"success"</span>,
+    <span class="code-string">"logs_count"</span>: 28,
+    <span class="code-string">"logs"</span>: [
+        {
+            <span class="code-string">"name"</span>: <span class="code-string">"ikitbot_driver.log"</span>,
+            <span class="code-string">"size"</span>: 125890,
+            <span class="code-string">"size_readable"</span>: <span class="code-string">"122.9 KB"</span>,
+            <span class="code-string">"category"</span>: <span class="code-string">"底盘"</span>,
+            <span class="code-string">"description"</span>: <span class="code-string">"底盘驱动核心日志..."</span>
+        }
+    ]
+}</code></pre>
+        </section>
+        
+        <!-- 前端界面 -->
+        <section id="frontend" class="section">
+            <h2>6. 前端界面</h2>
+            
+            <h3>Agent诊断面板</h3>
+            <p>位于"日志分析"页面，具有以下UI组件：</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>组件</th>
+                        <th>ID</th>
+                        <th>功能</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>问题描述输入框</td>
+                        <td><code>#agent-problem-input</code></td>
+                        <td>输入FAE反馈的问题描述（必填）</td>
+                    </tr>
+                    <tr>
+                        <td>时间输入框</td>
+                        <td><code>#agent-time-input</code></td>
+                        <td>可选，指定问题发生时间</td>
+                    </tr>
+                    <tr>
+                        <td>时间窗口</td>
+                        <td><code>#agent-window-input</code></td>
+                        <td>时间范围（分钟），默认15</td>
+                    </tr>
+                    <tr>
+                        <td>智能诊断按钮</td>
+                        <td><code>#run-agent-diagnose-btn</code></td>
+                        <td>触发Agent诊断流程</td>
+                    </tr>
+                    <tr>
+                        <td>推理过程区</td>
+                        <td><code>#agent-reasoning-section</code></td>
+                        <td>展示Agent的思考步骤</td>
+                    </tr>
+                    <tr>
+                        <td>选中日志区</td>
+                        <td><code>#agent-selected-logs-section</code></td>
+                        <td>展示Agent选择的日志文件</td>
+                    </tr>
+                    <tr>
+                        <td>分析结果区</td>
+                        <td><code>#agent-result-section</code></td>
+                        <td>展示AI分析结果</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>样式特点</h3>
+            <ul>
+                <li>深色科技主题，与系统整体风格统一</li>
+                <li>渐变色顶部边框动画效果</li>
+                <li>推理步骤采用编号卡片展示</li>
+                <li>选中日志以标签形式呈现</li>
+                <li>Markdown格式的AI分析结果自动转换为HTML</li>
+            </ul>
+            
+            <h3>JavaScript核心函数</h3>
+            <pre><code><span class="code-comment">// 初始化Agent功能</span>
+<span class="code-keyword">function</span> <span class="code-function">initAgentDiagnose</span>() { ... }
+
+<span class="code-comment">// 执行智能诊断</span>
+<span class="code-keyword">async function</span> <span class="code-function">runAgentDiagnose</span>() { ... }
+
+<span class="code-comment">// 渲染推理步骤</span>
+<span class="code-keyword">function</span> <span class="code-function">renderReasoningSteps</span>(reasoning, container) { ... }
+
+<span class="code-comment">// 渲染选中日志</span>
+<span class="code-keyword">function</span> <span class="code-function">renderSelectedLogs</span>(logs, container) { ... }
+
+<span class="code-comment">// 渲染分析结果</span>
+<span class="code-keyword">function</span> <span class="code-function">renderAgentAnalysis</span>(analysis, container) { ... }
+
+<span class="code-comment">// 显示知识库弹窗</span>
+<span class="code-keyword">async function</span> <span class="code-function">showLogKnowledge</span>() { ... }
+
+<span class="code-comment">// Markdown转HTML</span>
+<span class="code-keyword">function</span> <span class="code-function">markdownToHtml</span>(text) { ... }</code></pre>
+        </section>
+        
+        <!-- 配置说明 -->
+        <section id="configuration" class="section">
+            <h2>7. 配置说明</h2>
+            
+            <h3>config.py 配置项</h3>
+            <pre><code><span class="code-comment"># API配置</span>
+DEEPSEEK_API_KEY = <span class="code-string">"your-api-key"</span>
+DEEPSEEK_BASE_URL = <span class="code-string">"https://api.deepseek.com/v1"</span>
+DEEPSEEK_MODEL = <span class="code-string">"deepseek-chat"</span>
+
+<span class="code-comment"># 请求配置</span>
+MAX_TOKENS = 4000
+TEMPERATURE = 0.3
+REQUEST_TIMEOUT = 120
+
+<span class="code-comment"># 目录配置</span>
+LOG_DIRECTORY = <span class="code-string">"./logs"</span>
+REPORTS_DIRECTORY = <span class="code-string">"./reports"</span>
+TEMP_REPORTS_DIRECTORY = <span class="code-string">"./temp_reports"</span></code></pre>
+            
+            <h3>环境变量支持</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>环境变量</th>
+                        <th>说明</th>
+                        <th>默认值</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>DEEPSEEK_API_KEY</code></td>
+                        <td>DeepSeek API密钥</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><code>OPENAI_API_KEY</code></td>
+                        <td>OpenAI API密钥（备选）</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td><code>LOG_DIRECTORY</code></td>
+                        <td>日志文件目录</td>
+                        <td>./logs</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div class="note">
+                <p>请确保在生产环境中使用环境变量配置API密钥，避免将密钥硬编码在代码中。</p>
+            </div>
+        </section>
+        
+        <!-- 使用指南 -->
+        <section id="usage" class="section">
+            <h2>8. 使用指南</h2>
+            
+            <h3>快速开始</h3>
+            <ol>
+                <li>
+                    <strong>启动后端服务</strong>
+                    <pre><code>cd log_reader
+python backend/server.py</code></pre>
+                </li>
+                <li>
+                    <strong>访问前端界面</strong>
+                    <p>打开浏览器访问 <code>http://localhost:8080</code></p>
+                </li>
+                <li>
+                    <strong>进入Agent诊断</strong>
+                    <p>点击"日志分析"菜单，找到"智能Agent诊断"面板</p>
+                </li>
+                <li>
+                    <strong>输入问题描述</strong>
+                    <p>详细描述FAE反馈的问题，例如：</p>
+                    <ul>
+                        <li>"机器人导航到目标点后无法停止"</li>
+                        <li>"充电桩对接失败，机器人反复尝试"</li>
+                        <li>"SLAM建图时机器人位置漂移严重"</li>
+                    </ul>
+                </li>
+                <li>
+                    <strong>点击智能诊断</strong>
+                    <p>等待Agent分析（通常需要30秒-2分钟）</p>
+                </li>
+                <li>
+                    <strong>查看诊断结果</strong>
+                    <p>查看推理过程、选中日志和AI分析建议</p>
+                </li>
+            </ol>
+            
+            <h3>最佳实践</h3>
+            <div class="tip">
+                <ul>
+                    <li><strong>问题描述要具体</strong>：包含现象、时间、频率等信息</li>
+                    <li><strong>提供时间参考</strong>：如果知道问题发生时间，填写时间字段</li>
+                    <li><strong>查看推理过程</strong>：了解Agent为什么选择这些日志</li>
+                    <li><strong>结合知识库</strong>：点击"查看日志知识库"了解各日志用途</li>
+                </ul>
+            </div>
+            
+            <h3>常见问题</h3>
+            
+            <h4>Q: 诊断时间太长怎么办？</h4>
+            <p>A: 诊断时间主要取决于AI API响应速度。可以尝试：</p>
+            <ul>
+                <li>简化问题描述</li>
+                <li>缩小时间窗口</li>
+                <li>检查网络连接</li>
+            </ul>
+            
+            <h4>Q: 如何添加新的日志类型？</h4>
+            <p>A: 在 <code>log_agent.py</code> 的 <code>LOG_KNOWLEDGE_BASE</code> 字典中添加新条目：</p>
+            <pre><code><span class="code-string">"new_log.log"</span>: {
+    <span class="code-string">"category"</span>: <span class="code-string">"类别"</span>,
+    <span class="code-string">"description"</span>: <span class="code-string">"日志描述"</span>,
+    <span class="code-string">"importance"</span>: <span class="code-string">"high/medium/low"</span>,
+    <span class="code-string">"keywords"</span>: [<span class="code-string">"关键词1"</span>, <span class="code-string">"关键词2"</span>],
+    <span class="code-string">"problems"</span>: [<span class="code-string">"可能的问题1"</span>, <span class="code-string">"可能的问题2"</span>]
+}</code></pre>
+        </section>
+        
+        <!-- 页脚 -->
+        <footer class="footer">
+            <p>📚 智能日志诊断Agent 技术文档</p>
+            <p>版本 2.0.0 | 更新日期: 2025年11月30日</p>
+            <p style="margin-top: 1rem; font-size: 0.85rem;">
+                💡 如有问题，请联系技术支持团队
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

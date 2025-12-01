@@ -1,0 +1,22 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-11-27T18:31:11.662866",
+    "analyzer_version": "1.0",
+    "log_files_analyzed": 27,
+    "tasks_analyzed": 0
+  },
+  "trace_parameters": {
+    "lookback_tasks": 2,
+    "target_task_time": null,
+    "target_task_index": -1
+  },
+  "analysis_results": {
+    "message": "没有发现任务数据"
+  },
+  "summary": {
+    "task_sequences_count": 0,
+    "root_cause_indicators_count": 0,
+    "performance_degradation": false,
+    "error_escalation": false
+  }
+}

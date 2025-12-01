@@ -1,0 +1,11 @@
+{
+  "round": 19,
+  "difficulty": "hard",
+  "feedback": "上一轮回复成功，增加难度",
+  "last_result_tags": [
+    "CODE_EXECUTED_SUCCESS"
+  ],
+  "last_error_info": {
+    "execution_output": "20\n"
+  }
+}

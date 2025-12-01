@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 机器人日志分析系统</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-robot"></i>
+                <span>机器人日志分析系统</span>
+            </div>
+            <div class="nav-links">
+                <a href="#dashboard" class="nav-link active">仪表板</a>
+                <a href="#analysis" class="nav-link">日志分析</a>
+                <a href="#reports" class="nav-link">报告查看</a>
+                <a href="#settings" class="nav-link">设置</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主容器 -->
+    <div class="container">
+        <!-- 仪表板区域 -->
+        <section id="dashboard" class="section active">
+            <div class="dashboard-header">
+                <h1><i class="fas fa-chart-line"></i> 系统概览</h1>
+                <div class="api-status">
+                    <span class="status-label">API状态:</span>
+                    <span id="apiStatus" class="status-badge">检测中...</span>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>日志文件</h3>
+                        <span id="logCount" class="stat-value">0</span>
+                        <span class="stat-label">个文件</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-bug"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>异常检测</h3>
+                        <span id="anomalyCount" class="stat-value">0</span>
+                        <span class="stat-label">个异常</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>分析报告</h3>
+                        <span id="reportCount" class="stat-value">0</span>
+                        <span class="stat-label">个报告</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>AI分析</h3>
+                        <span id="aiStatus" class="stat-value">就绪</span>
+                        <span class="stat-label">状态</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <h2><i class="fas fa-bolt"></i> 快速操作</h2>
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="showSection('analysis')">
+                        <i class="fas fa-search"></i>
+                        <span>开始分析</span>
+                    </button>
+                    <button class="action-btn" onclick="showSection('reports')">
+                        <i class="fas fa-file-medical"></i>
+                        <span>查看报告</span>
+                    </button>
+                    <button class="action-btn" onclick="testStatusBtn()">
+                        <i class="fas fa-heartbeat"></i>
+                        <span>测试系统</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 日志分析区域 -->
+        <section id="analysis" class="section">
+            <div class="analysis-header">
+                <h1><i class="fas fa-search"></i> 日志分析</h1>
+                <button class="btn-primary" id="start-analysis-btn">
+                    <i class="fas fa-play"></i> 开始分析
+                </button>
+            </div>
+
+            <div class="analysis-controls">
+                <div class="control-group">
+                    <label for="log-dir-input"><i class="fas fa-folder"></i> 日志目录:</label>
+                    <input type="text" id="log-dir-input" value="./logs" placeholder="输入日志目录路径">
+                </div>
+
+                <div class="control-group">
+                    <label for="report-type-select"><i class="fas fa-file-alt"></i> 报告类型:</label>
+                    <select id="report-type-select">
+                        <option value="basic">基础分析报告</option>
+                        <option value="enhanced" selected>增强分析报告</option>
+                        <option value="deepseek_enhanced">DeepSeek增强报告</option>
+                        <option value="comprehensive">综合分析报告</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="enable-ai-checkbox">
+                        <input type="checkbox" id="enable-ai-checkbox" checked> 
+                        <i class="fas fa-robot"></i> 启用AI增强
+                    </label>
+                </div>
+            </div>
+
+            <div class="diagnose-panel">
+                <div class="diagnose-header">
+                    <div>
+                        <h3><i class="fas fa-stethoscope"></i> AI 问题定位</h3>
+                        <p>输入问题发生时间和描述，系统将自动检索相关日志并用大模型给出诊断建议。</p>
+                    </div>
+                    <button class="btn-primary" id="run-diagnose-btn">
+                        <i class="fas fa-lightbulb"></i> 开始诊断
+                    </button>
+                </div>
+
+                <div class="diagnose-form-grid">
+                    <div class="form-item">
+                        <label for="issue-time-input">问题时间 (YYYY-MM-DD HH:MM:SS)</label>
+                        <input type="text" id="issue-time-input" placeholder="例如：2025-11-30 14:30:00">
+                    </div>
+
+                    <div class="form-item">
+                        <label for="diagnose-window-input">时间窗口 (分钟)</label>
+                        <input type="number" id="diagnose-window-input" min="1" value="10">
+                    </div>
+
+                    <div class="form-item full-width">
+                        <label for="issue-desc-input">问题描述 (可选)</label>
+                        <textarea id="issue-desc-input" rows="3" placeholder="请输入 FAE 的反馈或现场描述，例如：机器人在该时间停止运动，无法继续任务"></textarea>
+                    </div>
+                </div>
+
+                <div class="diagnose-output">
+                    <h3><i class="fas fa-robot"></i> 诊断结果</h3>
+                    <div id="diagnose-output" class="diagnose-placeholder">
+                        <p>等待输入问题时间并点击"开始诊断"...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 智能Agent诊断面板 -->
+            <div class="agent-diagnose-panel">
+                <div class="agent-header">
+                    <div class="agent-title">
+                        <h3><i class="fas fa-brain"></i> 智能Agent诊断 <span class="badge-new">NEW</span></h3>
+                        <p>基于问题描述，AI Agent会自动理解并选择最相关的日志文件进行深度分析，无需手动指定日志或精确时间。</p>
+                    </div>
+                    <div class="agent-actions">
+                        <button class="btn-secondary btn-small" id="show-log-knowledge-btn">
+                            <i class="fas fa-book"></i> 查看日志知识库
+                        </button>
+                        <button class="btn-primary" id="run-agent-diagnose-btn">
+                            <i class="fas fa-magic"></i> 智能诊断
+                        </button>
+                    </div>
+                </div>
+
+                <div class="agent-form">
+                    <div class="form-item full-width">
+                        <label for="agent-problem-input">
+                            <i class="fas fa-comment-alt"></i> 问题描述 <span class="required">*必填</span>
+                        </label>
+                        <textarea id="agent-problem-input" rows="4" placeholder="请详细描述遇到的问题，例如：&#10;• 机器人导航到目标点后无法停止&#10;• 充电桩对接失败，机器人反复尝试&#10;• SLAM建图时机器人漂移严重&#10;• 电机报警，机器人无法移动"></textarea>
+                    </div>
+
+                    <div class="agent-options">
+                        <div class="form-item">
+                            <label for="agent-time-input">问题时间 (可选)</label>
+                            <input type="text" id="agent-time-input" placeholder="YYYY-MM-DD HH:MM:SS">
+                        </div>
+
+                        <div class="form-item">
+                            <label for="agent-window-input">时间窗口 (分钟)</label>
+                            <input type="number" id="agent-window-input" min="1" value="15">
+                        </div>
+
+                        <div class="form-item">
+                            <label for="agent-max-lines-input">每文件最大行数</label>
+                            <input type="number" id="agent-max-lines-input" min="100" value="500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent推理过程展示 -->
+                <div class="agent-reasoning" id="agent-reasoning-section" style="display: none;">
+                    <h4><i class="fas fa-cogs"></i> Agent 推理过程</h4>
+                    <div class="reasoning-steps" id="agent-reasoning-steps">
+                    </div>
+                </div>
+
+                <!-- Agent选择的日志展示 -->
+                <div class="agent-selected-logs" id="agent-selected-logs-section" style="display: none;">
+                    <h4><i class="fas fa-file-code"></i> 选中的日志文件</h4>
+                    <div class="selected-logs-list" id="agent-selected-logs">
+                    </div>
+                </div>
+
+                <!-- Agent分析结果 -->
+                <div class="agent-result" id="agent-result-section" style="display: none;">
+                    <h4><i class="fas fa-clipboard-check"></i> AI 诊断分析</h4>
+                    <div class="agent-analysis-content" id="agent-analysis-content">
+                    </div>
+                </div>
+
+                <!-- 日志知识库弹窗 -->
+                <div class="log-knowledge-modal" id="log-knowledge-modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-book-open"></i> 日志知识库</h3>
+                            <button class="modal-close" id="close-knowledge-modal">&times;</button>
+                        </div>
+                        <div class="modal-body" id="log-knowledge-content">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="analysis-output">
+                <h3><i class="fas fa-terminal"></i> 分析结果</h3>
+                <pre id="analysis-output"></pre>
+            </div>
+        </section>
+
+        <!-- 报告查看区域 -->
+        <section id="reports" class="section">
+            <div class="reports-header">
+                <h1><i class="fas fa-file-medical"></i> 报告查看</h1>
+                <button class="btn-secondary" id="refresh-reports-btn">
+                    <i class="fas fa-sync"></i> 刷新
+                </button>
+            </div>
+
+            <div class="reports-content">
+                <h3><i class="fas fa-list"></i> 报告列表</h3>
+                <ul id="reports-list" class="reports-list">
+                    <!-- 报告列表将动态加载 -->
+                </ul>
+                <div id="no-reports" class="no-reports">
+                    <i class="fas fa-file-alt"></i>
+                    <p>暂无报告，请先进行日志分析</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 设置区域 -->
+        <section id="settings" class="section">
+            <div class="settings-header">
+                <h1><i class="fas fa-cog"></i> 系统设置</h1>
+            </div>
+
+            <div class="settings-content">
+                <div class="settings-group">
+                    <h3><i class="fas fa-key"></i> API 设置</h3>
+                    
+                    <div class="form-group">
+                        <label for="api-provider">Provider:</label>
+                        <select id="api-provider">
+                            <option value="openai">OpenAI</option>
+                            <option value="deepseek">DeepSeek</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="api-key">API Key:</label>
+                        <input id="api-key" type="password" placeholder="输入API密钥">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="base-url">Base URL:</label>
+                        <input id="base-url" value="https://api.openai.com/v1" placeholder="输入基础URL">
+                    </div>
+
+                    <button class="btn-primary" id="save-settings-btn">
+                        <i class="fas fa-save"></i> 保存设置
+                    </button>
+                </div>
+
+                <div class="settings-output">
+                    <h3><i class="fas fa-terminal"></i> 设置结果</h3>
+                    <pre id="settings-output"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- 系统状态区域 -->
+        <section id="status" class="section">
+            <div class="status-header">
+                <h1><i class="fas fa-heartbeat"></i> 系统状态</h1>
+                <button class="btn-secondary" id="test-status-btn">
+                    <i class="fas fa-sync"></i> 测试状态
+                </button>
+            </div>
+
+            <div class="status-output">
+                <h3><i class="fas fa-info-circle"></i> 状态信息</h3>
+                <pre id="status-output"></pre>
+            </div>
+        </section>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // 页面导航功能
+        function showSection(sectionId) {
+            // 隐藏所有section
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 显示目标section
+            document.getElementById(sectionId).classList.add('active');
+            
+            // 更新导航链接状态
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
+        }
+
+        // 导航链接点击事件
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const sectionId = link.getAttribute('href').substring(1);
+                showSection(sectionId);
+            });
+        });
+
+        // 测试状态按钮快捷方式
+        function testStatusBtn() {
+            showSection('status');
+            document.getElementById('test-status-btn').click();
+        }
+    </script>
+</body>
+</html>
