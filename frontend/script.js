@@ -774,7 +774,7 @@ function escapeHtml(str) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-}}
+}
 
 // ==================== 智能Agent诊断功能 ====================
 

@@ -93,7 +93,7 @@
                         <i class="fas fa-file-medical"></i>
                         <span>查看报告</span>
                     </button>
-                    <button class="action-btn" onclick="testStatusBtn()">
+                    <button class="action-btn" onclick="showSection('status'); document.getElementById('test-status-btn').click();">
                         <i class="fas fa-heartbeat"></i>
                         <span>测试系统</span>
                     </button>
@@ -331,38 +331,6 @@
     </div>
 
     <script src="script.js"></script>
-    <script>
-        // 页面导航功能
-        function showSection(sectionId) {
-            // 隐藏所有section
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.remove('active');
-            });
-            
-            // 显示目标section
-            document.getElementById(sectionId).classList.add('active');
-            
-            // 更新导航链接状态
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            document.querySelector(`[href="#${sectionId}"]`).classList.add('active');
-        }
-
-        // 导航链接点击事件
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const sectionId = link.getAttribute('href').substring(1);
-                showSection(sectionId);
-            });
-        });
-
-        // 测试状态按钮快捷方式
-        function testStatusBtn() {
-            showSection('status');
-            document.getElementById('test-status-btn').click();
-        }
-    </script>
+    
 </body>
 </html>
