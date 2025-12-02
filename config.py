@@ -8,13 +8,13 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-447bc662de434c39b3a6fbc13598004b")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-USE_DEEPSEEK = os.getenv("USE_DEEPSEEK", "false").lower() == "true"
+USE_DEEPSEEK = os.getenv("USE_DEEPSEEK", "true").lower() == "true"  # 默认启用 DeepSeek
 BASE_URL = os.getenv("BASE_URL", "https://api.openai.com/v1")
 
 # AI请求配置
-MAX_TOKENS = int(os.getenv("MAX_TOKENS", "1000"))
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))  # 增加到2000以支持更详细的分析
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
+REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "120"))  # 增加到120秒以避免超时
 
 # 动态API配置
 API_KEY = DEEPSEEK_API_KEY if USE_DEEPSEEK else OPENAI_API_KEY

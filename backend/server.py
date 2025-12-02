@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import OPENAI_API_KEY, BASE_URL, LOG_DIRECTORY, TEMP_REPORTS_DIRECTORY
 from config import API_KEY, API_BASE_URL, API_MODEL, MAX_TOKENS, TEMPERATURE, REQUEST_TIMEOUT
 import requests
+import time
 import re
 
 # 导入分析器
@@ -489,8 +490,10 @@ def _build_prompt(description: str, issue_time: str, logs: str):
     )
 
 
-def call_ai_model(prompt: str):
-    """调用外部大模型 API（OpenAI/兼容 API）。返回 dict（包含 raw 文本或 error）。"""
+def call_ai_model(prompt: str, retries: int = 3, backoff: float = 2.0):
+    """调用外部大模型 API（OpenAI/兼容 API）。
+    支持重试与指数退避，返回 dict（包含 raw 文本或 error）。
+    """
     if not API_KEY:
         return {"error": "未配置 API_KEY（请在环境变量或 config.py 中设置）"}
 
@@ -502,22 +505,32 @@ def call_ai_model(prompt: str):
         "temperature": TEMPERATURE or 0.7
     }
 
-    # 兼容 OpenAI 风格的 /chat/completions endpoint
-    try:
-        url = API_BASE_URL.rstrip('/') + '/chat/completions'
-        resp = requests.post(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT or 30)
-        resp.raise_for_status()
-        data = resp.json()
-        # 尝试解析结果
-        choice = (data.get('choices') or [None])[0]
-        if not choice:
-            return {"error": "模型返回格式异常", "raw": data}
-        # 新式接口 content 位于 message.content
-        message = choice.get('message') or {}
-        content = message.get('content') or choice.get('text') or ''
-        return {"raw": content, "meta": data}
-    except Exception as e:
-        return {"error": str(e)}
+    url = API_BASE_URL.rstrip('/') + '/chat/completions'
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=REQUEST_TIMEOUT or 30)
+            resp.raise_for_status()
+            data = resp.json()
+            # 尝试解析结果
+            choice = (data.get('choices') or [None])[0]
+            if not choice:
+                return {"error": "模型返回格式异常", "raw": data}
+            message = choice.get('message') or {}
+            content = message.get('content') or choice.get('text') or ''
+            return {"raw": content, "meta": data, "attempt": attempt}
+        except requests.exceptions.RequestException as e:
+            last_err = str(e)
+            print(f"⚠️ 调用AI失败 (attempt {attempt}/{retries}): {last_err}")
+            if attempt < retries:
+                sleep_time = backoff * (2 ** (attempt - 1))
+                print(f"   -> 重试等待 {sleep_time} 秒...")
+                time.sleep(sleep_time)
+                continue
+            else:
+                return {"error": last_err}
+        except Exception as e:
+            return {"error": str(e)}
 
 
 @app.route('/api/diagnose', methods=['POST'])
