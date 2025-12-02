@@ -25,6 +25,16 @@ from config import REPORTS_DIRECTORY
 # 导入智能日志诊断Agent
 from log_agent import LogDiagnosticAgent
 
+# 导入 JSON API 服务
+from api_json_service import (
+    analyze_logs_json,
+    historical_trace_json,
+    complaint_analysis_json,
+    anomaly_summary_json,
+    log_files_info_json,
+    system_health_json
+)
+
 # 全局设置存储对象
 settings_storage = {}
 
@@ -674,6 +684,65 @@ def agent_available_logs():
             "status": "error",
             "message": f"获取可用日志列表失败: {str(e)}"
         }), 500
+
+
+# ==================== JSON API 接口（用于大模型集成） ====================
+
+@app.route('/api/json/analyze', methods=['GET'])
+def json_analyze():
+    """综合日志分析（JSON 格式，无可视化）"""
+    log_directory = request.args.get('log_dir', LOG_DIRECTORY)
+    result = analyze_logs_json(log_directory)
+    return jsonify(result)
+
+
+@app.route('/api/json/historical-trace', methods=['GET'])
+def json_historical_trace():
+    """历史追溯分析（JSON 格式）"""
+    log_directory = request.args.get('log_dir', LOG_DIRECTORY)
+    result = historical_trace_json(log_directory)
+    return jsonify(result)
+
+
+@app.route('/api/json/complaint', methods=['POST'])
+def json_complaint():
+    """投诉分析（JSON 格式）"""
+    data = request.get_json() or {}
+    log_directory = data.get('log_dir', LOG_DIRECTORY)
+    complaint_time = data.get('complaint_time')
+    
+    if not complaint_time:
+        return jsonify({
+            "status": "error",
+            "message": "缺少参数: complaint_time (格式: YYYY-MM-DD HH:MM:SS)"
+        }), 400
+    
+    result = complaint_analysis_json(log_directory, complaint_time)
+    return jsonify(result)
+
+
+@app.route('/api/json/anomaly-summary', methods=['GET'])
+def json_anomaly_summary():
+    """异常汇总（JSON 格式）"""
+    log_directory = request.args.get('log_dir', LOG_DIRECTORY)
+    result = anomaly_summary_json(log_directory)
+    return jsonify(result)
+
+
+@app.route('/api/json/log-files', methods=['GET'])
+def json_log_files():
+    """日志文件信息（JSON 格式）"""
+    log_directory = request.args.get('log_dir', LOG_DIRECTORY)
+    result = log_files_info_json(log_directory)
+    return jsonify(result)
+
+
+@app.route('/api/json/system-health', methods=['GET'])
+def json_system_health():
+    """系统健康评估（JSON 格式）"""
+    log_directory = request.args.get('log_dir', LOG_DIRECTORY)
+    result = system_health_json(log_directory)
+    return jsonify(result)
 
 
 # 前端静态文件服务路由
